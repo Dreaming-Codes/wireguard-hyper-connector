@@ -1,5 +1,9 @@
 # WireGuard Userspace Tunnel
 
+[![wireguard-netstack](https://img.shields.io/crates/v/wireguard-netstack.svg?label=wireguard-netstack)](https://crates.io/crates/wireguard-netstack)
+[![wireguard-hyper-connector](https://img.shields.io/crates/v/wireguard-hyper-connector.svg?label=wireguard-hyper-connector)](https://crates.io/crates/wireguard-hyper-connector)
+[![warp-wireguard-gen](https://img.shields.io/crates/v/warp-wireguard-gen.svg?label=warp-wireguard-gen)](https://crates.io/crates/warp-wireguard-gen)
+
 A Rust library for routing HTTP traffic through WireGuard VPN tunnels entirely in userspace, without requiring root privileges or kernel-level WireGuard support. Includes seamless integration with Cloudflare WARP for zero-configuration VPN setup.
 
 ## Features

@@ -3,7 +3,11 @@ name = "wireguard-hyper-connector"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
 description = "Hyper connector for making HTTP requests through a WireGuard tunnel"
+keywords = ["wireguard", "hyper", "http", "vpn", "tunnel"]
+categories = ["network-programming", "asynchronous", "web-programming::http-client"]
 
 [dependencies]
 # Local dependency
@@ -51,6 +55,6 @@ path = "../../examples/reqwest_custom_connector.rs"
 env_logger = "0.11"
 http-body-util = "0.1"
 base64 = "0.22"
-gotatun = { git = "https://github.com/mullvad/gotatun", branch = "main" }
+gotatun = "0.1"
 warp-wireguard-gen.workspace = true
 reqwest-wg.workspace = true

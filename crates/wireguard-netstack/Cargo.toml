@@ -3,11 +3,15 @@ name = "wireguard-netstack"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
 description = "Userspace WireGuard tunnel with TCP/IP network stack"
+keywords = ["wireguard", "vpn", "tunnel", "networking", "tcp"]
+categories = ["network-programming", "asynchronous"]
 
 [dependencies]
 # WireGuard implementation
-gotatun = { git = "https://github.com/mullvad/gotatun", branch = "main" }
+gotatun = "0.1"
 
 # Userspace TCP/IP stack
 smoltcp = { version = "0.12", default-features = false, features = [

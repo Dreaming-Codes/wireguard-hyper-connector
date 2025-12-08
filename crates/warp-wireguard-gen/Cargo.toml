@@ -3,7 +3,11 @@ name = "warp-wireguard-gen"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
+authors.workspace = true
+repository.workspace = true
 description = "Generate WireGuard configs by registering with Cloudflare WARP"
+keywords = ["wireguard", "warp", "cloudflare", "vpn", "tunnel"]
+categories = ["network-programming", "asynchronous"]
 
 [features]
 default = []

@@ -10,6 +10,8 @@ members = [
 version = "0.1.0"
 edition = "2021"
 license = "GPL-3.0"
+authors = ["Lorenzo Rizzotti <dev@dreaming.codes>"]
+repository = "https://github.com/Dreaming-Codes/wireguard-hyper-connector"
 
 [workspace.dependencies]
 # Shared dependencies with consistent versions
@@ -39,5 +41,5 @@ x25519-dalek = { version = "2", features = ["static_secrets"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 
 # Local crates
-wireguard-netstack = { path = "crates/wireguard-netstack" }
-warp-wireguard-gen = { path = "crates/warp-wireguard-gen" }
+wireguard-netstack = { version = "0.1.0", path = "crates/wireguard-netstack" }
+warp-wireguard-gen = { version = "0.1.0", path = "crates/warp-wireguard-gen" }
