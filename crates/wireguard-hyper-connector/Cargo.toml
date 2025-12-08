@@ -1,0 +1,46 @@
+[package]
+name = "wireguard-hyper-connector"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+description = "Hyper connector for making HTTP requests through a WireGuard tunnel"
+
+[dependencies]
+# Local dependency
+wireguard-netstack.workspace = true
+
+# HTTP
+hyper = { version = "1", features = ["client", "http1", "http2"] }
+hyper-util = { version = "0.1", features = ["client-legacy", "tokio", "http1", "http2"] }
+http = "1"
+
+# Service trait
+tower-service = "0.3"
+
+# Async runtime
+tokio.workspace = true
+
+# TLS
+tokio-rustls.workspace = true
+rustls.workspace = true
+webpki-roots.workspace = true
+
+# Error handling
+thiserror.workspace = true
+
+# Utilities
+bytes.workspace = true
+log.workspace = true
+
+# Pin utilities
+pin-project-lite = "0.2"
+
+[[example]]
+name = "demo"
+path = "../../examples/demo.rs"
+
+[dev-dependencies]
+env_logger = "0.11"
+http-body-util = "0.1"
+base64 = "0.22"
+gotatun = { git = "https://github.com/mullvad/gotatun", branch = "main" }

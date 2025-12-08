@@ -1,0 +1,29 @@
+[workspace]
+resolver = "2"
+members = [
+    "crates/wireguard-netstack",
+    "crates/wireguard-hyper-connector",
+]
+
+[workspace.package]
+version = "0.1.0"
+edition = "2021"
+license = "GPL-3.0"
+
+[workspace.dependencies]
+# Shared dependencies with consistent versions
+tokio = { version = "1", features = ["full"] }
+bytes = "1"
+log = "0.4"
+thiserror = "1"
+parking_lot = "0.12"
+rand = "0.8"
+base64 = "0.22"
+
+# TLS
+tokio-rustls = "0.26"
+rustls = { version = "0.23", features = ["ring"] }
+webpki-roots = "0.26"
+
+# Local crates
+wireguard-netstack = { path = "crates/wireguard-netstack" }
