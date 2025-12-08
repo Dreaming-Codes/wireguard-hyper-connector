@@ -3,6 +3,7 @@ resolver = "2"
 members = [
     "crates/wireguard-netstack",
     "crates/wireguard-hyper-connector",
+    "crates/warp-wireguard-gen",
 ]
 
 [workspace.package]
@@ -25,5 +26,15 @@ tokio-rustls = "0.26"
 rustls = { version = "0.23", features = ["ring"] }
 webpki-roots = "0.26"
 
+# HTTP
+reqwest = { version = "0.12", default-features = false }
+
+# Crypto
+x25519-dalek = { version = "2", features = ["static_secrets"] }
+
+# Time
+chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
+
 # Local crates
 wireguard-netstack = { path = "crates/wireguard-netstack" }
+warp-wireguard-gen = { path = "crates/warp-wireguard-gen" }
