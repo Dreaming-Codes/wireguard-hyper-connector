@@ -29,6 +29,9 @@ webpki-roots = "1.0"
 # HTTP
 reqwest = { version = "0.12", default-features = false }
 
+# reqwest with custom-hyper-connector support (will be merged upstream)
+reqwest-wg = { git = "https://github.com/Dreaming-Codes/reqwest", branch = "custom-hyper-connector", package = "reqwest", default-features = false, features = ["custom-hyper-connector", "rustls-tls"] }
+
 # Crypto
 x25519-dalek = { version = "2", features = ["static_secrets"] }
 
