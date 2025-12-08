@@ -10,7 +10,7 @@ description = "Userspace WireGuard tunnel with TCP/IP network stack"
 gotatun = { git = "https://github.com/mullvad/gotatun", branch = "main" }
 
 # Userspace TCP/IP stack
-smoltcp = { version = "0.11", default-features = false, features = [
+smoltcp = { version = "0.12", default-features = false, features = [
     "medium-ip",
     "proto-ipv4",
     "socket-tcp",
@@ -44,7 +44,7 @@ serde_ini = "0.2"
 ipnet = "2"
 
 # Socket options
-socket2 = "0.5"
+socket2 = "0.6"
 
 # For zerocopy traits
 zerocopy = "0.8"

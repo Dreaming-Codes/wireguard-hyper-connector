@@ -12,6 +12,8 @@
 //! use wireguard_hyper_connector::{WgConnector, ManagedTunnel, WgConfigFile, DohServerConfig};
 //! use hyper_util::client::legacy::Client;
 //! use hyper_util::rt::TokioExecutor;
+//! use http_body_util::Empty;
+//! use bytes::Bytes;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -25,7 +27,7 @@
 //!     // Use Quad9 DNS for HTTP requests through the tunnel
 //!     let connector = WgConnector::with_dns(tunnel.netstack(), DohServerConfig::quad9());
 //!     
-//!     let client = Client::builder(TokioExecutor::new()).build(connector);
+//!     let client: Client<WgConnector, Empty<Bytes>> = Client::builder(TokioExecutor::new()).build(connector);
 //!     
 //!     // Make requests...
 //!     
@@ -40,6 +42,8 @@
 //! use wireguard_hyper_connector::{WgConnector, ManagedTunnel, WgConfigFile};
 //! use hyper_util::client::legacy::Client;
 //! use hyper_util::rt::TokioExecutor;
+//! use http_body_util::Empty;
+//! use bytes::Bytes;
 //!
 //! #[tokio::main]
 //! async fn main() -> Result<(), Box<dyn std::error::Error>> {
@@ -54,7 +58,7 @@
 //!     let connector = WgConnector::new(tunnel.netstack());
 //!     
 //!     // Create a hyper client
-//!     let client = Client::builder(TokioExecutor::new()).build(connector);
+//!     let client: Client<WgConnector, Empty<Bytes>> = Client::builder(TokioExecutor::new()).build(connector);
 //!     
 //!     // Make requests...
 //!     

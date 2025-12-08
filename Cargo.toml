@@ -16,7 +16,7 @@ license = "GPL-3.0"
 tokio = { version = "1", features = ["full"] }
 bytes = "1"
 log = "0.4"
-thiserror = "1"
+thiserror = "2"
 parking_lot = "0.12"
 rand = "0.8"
 base64 = "0.22"
@@ -24,7 +24,7 @@ base64 = "0.22"
 # TLS
 tokio-rustls = "0.26"
 rustls = { version = "0.23", features = ["ring"] }
-webpki-roots = "0.26"
+webpki-roots = "1.0"
 
 # HTTP
 reqwest = { version = "0.12", default-features = false }

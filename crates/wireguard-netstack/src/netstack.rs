@@ -7,7 +7,7 @@ use crate::error::{Error, Result};
 use crate::wireguard::WireGuardTunnel;
 use bytes::BytesMut;
 use parking_lot::Mutex;
-use smoltcp::iface::{Config, Interface, SocketHandle, SocketSet};
+use smoltcp::iface::{Config, Interface, PollResult, SocketHandle, SocketSet};
 use smoltcp::phy::{Device, DeviceCapabilities, Medium, RxToken, TxToken};
 use smoltcp::socket::tcp::{Socket as TcpSocket, SocketBuffer, State as TcpState};
 use smoltcp::time::Instant;
@@ -61,11 +61,11 @@ struct VirtualRxToken {
 }
 
 impl RxToken for VirtualRxToken {
-    fn consume<R, F>(mut self, f: F) -> R
+    fn consume<R, F>(self, f: F) -> R
     where
-        F: FnOnce(&mut [u8]) -> R,
+        F: FnOnce(&[u8]) -> R,
     {
-        f(&mut self.buffer)
+        f(&self.buffer)
     }
 }
 
@@ -83,6 +83,10 @@ impl<'a> TxToken for VirtualTxToken<'a> {
         let result = f(&mut buffer);
         self.tx_queue.push_back(buffer);
         result
+    }
+
+    fn set_meta(&mut self, _meta: smoltcp::phy::PacketMeta) {
+        // No metadata handling needed for virtual device
     }
 }
 
@@ -348,7 +352,8 @@ impl NetStack {
         }
 
         // Poll the interface
-        let processed = interface.poll(timestamp, device, sockets);
+        let poll_result = interface.poll(timestamp, device, sockets);
+        let processed = poll_result != PollResult::None;
 
         if processed {
             log::trace!("NetStack poll processed packets");
