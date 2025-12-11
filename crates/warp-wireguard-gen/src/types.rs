@@ -53,7 +53,8 @@ pub struct RegisterResponse {
 /// Account information.
 #[derive(Debug, Deserialize)]
 pub struct Account {
-    /// Account license key.
+    /// Account license key (may be absent for Teams enrollment).
+    #[serde(default)]
     pub license: String,
     /// Whether the account has Warp+ enabled.
     #[serde(default)]
