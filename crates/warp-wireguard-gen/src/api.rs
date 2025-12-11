@@ -1,6 +1,5 @@
 //! Cloudflare WARP API client implementation.
 
-use std::net::SocketAddr;
 use std::sync::Arc;
 
 use base64::{engine::general_purpose::STANDARD, Engine};
@@ -11,7 +10,7 @@ use crate::error::{Error, Result};
 use crate::keys::generate_keypair;
 use crate::types::*;
 use crate::{RegistrationOptions, WarpCredentials};
-use wireguard_netstack::{DohResolver, WireGuardConfig};
+use wireguard_netstack::WireGuardConfig;
 
 /// Cloudflare WARP API base URL.
 const API_URL: &str = "https://api.cloudflareclient.com";
@@ -233,8 +232,23 @@ async fn get_config_with_client_id(
         .parse()
         .map_err(|_| Error::InvalidAddress(resp.config.interface.addresses.v4.clone()))?;
 
-    // Resolve endpoint hostname
-    let peer_endpoint = resolve_endpoint(&peer.endpoint.host).await?;
+    // Use the direct IPv4 endpoint from the API response
+    // (Don't resolve the hostname - it may return a different/wrong IP)
+    // The v4 field contains "IP:0" format, so we strip the port and use the one from host field
+    // (or default to 2408 which is WARP's standard port)
+    let endpoint_ip = peer.endpoint.v4
+        .rsplit_once(':')
+        .map(|(ip, _)| ip)
+        .unwrap_or(&peer.endpoint.v4);
+    
+    let port = peer.endpoint.host
+        .rsplit_once(':')
+        .and_then(|(_, p)| p.parse::<u16>().ok())
+        .unwrap_or(2408); // Default WARP port
+    
+    let peer_endpoint = format!("{}:{}", endpoint_ip, port)
+        .parse()
+        .map_err(|_| Error::InvalidEndpoint(peer.endpoint.v4.clone()))?;
 
     // Parse client_id if present
     let client_id = parse_client_id(resp.config.client_id.as_deref())?;
@@ -279,34 +293,4 @@ pub async fn update_license(credentials: &WarpCredentials, license_key: &str) ->
     log::info!("License key updated successfully");
 
     Ok(())
-}
-
-/// Resolve an endpoint hostname to a SocketAddr.
-///
-/// First tries to parse as a direct SocketAddr, then falls back to DNS-over-HTTPS resolution.
-async fn resolve_endpoint(endpoint: &str) -> Result<SocketAddr> {
-    // Try to parse directly as SocketAddr first
-    if let Ok(addr) = endpoint.parse() {
-        return Ok(addr);
-    }
-
-    // Parse host:port
-    let (host, port) = endpoint
-        .rsplit_once(':')
-        .ok_or_else(|| Error::InvalidEndpoint(endpoint.to_string()))?;
-
-    let port: u16 = port
-        .parse()
-        .map_err(|_| Error::InvalidEndpoint(format!("Invalid port in endpoint: {}", endpoint)))?;
-
-    // Resolve via DoH (using Cloudflare DNS in direct mode)
-    log::info!("Resolving WARP endpoint '{}' via DoH...", host);
-    let resolver = DohResolver::new_direct();
-    let addr = resolver
-        .resolve_addr(host, port)
-        .await
-        .map_err(|e| Error::DnsResolution(format!("Failed to resolve '{}': {}", host, e)))?;
-
-    log::info!("WARP endpoint resolved to: {}", addr);
-    Ok(addr)
 }
