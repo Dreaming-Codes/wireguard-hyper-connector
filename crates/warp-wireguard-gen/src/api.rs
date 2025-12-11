@@ -96,8 +96,9 @@ pub async fn register(options: RegistrationOptions) -> Result<(WireGuardConfig, 
             model: options.device_model,
             tos: None,
             device_type: None,
-            name: teams.device_name.clone(),
-            serial_number: teams.serial_number.clone(),
+            // For Teams enrollment, always send name and serial_number (even if empty)
+            name: Some(teams.device_name.clone().unwrap_or_default()),
+            serial_number: Some(teams.serial_number.clone().unwrap_or_default()),
         }
     } else {
         let timestamp = Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Nanos, true);
