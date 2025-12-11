@@ -44,4 +44,12 @@ pub enum Error {
     /// DNS resolution failed.
     #[error("DNS resolution failed: {0}")]
     DnsResolution(String),
+
+    /// Teams enrollment JWT token is invalid or expired.
+    ///
+    /// The JWT token obtained from the Cloudflare Access portal is ephemeral
+    /// and expires shortly after being issued. Re-authenticate and obtain
+    /// a fresh token.
+    #[error("Teams enrollment failed: {0}")]
+    TeamsEnrollment(String),
 }

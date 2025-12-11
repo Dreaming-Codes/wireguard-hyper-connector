@@ -17,12 +17,15 @@ use wireguard_netstack::{DohResolver, WireGuardConfig};
 const API_URL: &str = "https://api.cloudflareclient.com";
 
 /// API version string (must match the official client).
-const API_VERSION: &str = "v0a1922";
+const API_VERSION: &str = "v0a2483";
+
+/// CF-Client-Version header value.
+const CF_CLIENT_VERSION: &str = "a-6.81-2410012252.0";
 
 /// Create an HTTP client with required headers and TLS 1.2 configuration.
 ///
 /// Cloudflare's WARP API requires TLS 1.2 specifically and rejects TLS 1.3.
-fn create_client(auth_token: Option<&str>) -> Result<Client> {
+fn create_client(auth_token: Option<&str>, teams_jwt: Option<&str>) -> Result<Client> {
     // Configure rustls to use TLS 1.2 only (Cloudflare API requirement)
     // Use ring crypto provider explicitly
     let tls_config = rustls::ClientConfig::builder_with_provider(Arc::new(
@@ -36,7 +39,12 @@ fn create_client(auth_token: Option<&str>) -> Result<Client> {
     .with_no_client_auth();
 
     let mut headers = reqwest::header::HeaderMap::new();
-    headers.insert("CF-Client-Version", "a-6.3-1922".parse().unwrap());
+    headers.insert("CF-Client-Version", CF_CLIENT_VERSION.parse().unwrap());
+    headers.insert(
+        reqwest::header::ACCEPT,
+        "application/json; charset=UTF-8".parse().unwrap(),
+    );
+
     if let Some(token) = auth_token {
         headers.insert(
             reqwest::header::AUTHORIZATION,
@@ -44,9 +52,18 @@ fn create_client(auth_token: Option<&str>) -> Result<Client> {
         );
     }
 
+    // Add Teams JWT assertion header for Zero Trust enrollment
+    if let Some(jwt) = teams_jwt {
+        headers.insert(
+            "CF-Access-Jwt-Assertion",
+            jwt.parse()
+                .map_err(|_| Error::InvalidResponse("Invalid JWT token format".to_string()))?,
+        );
+    }
+
     let builder = Client::builder()
         .use_preconfigured_tls(tls_config)
-        .user_agent("okhttp/3.12.1")
+        .user_agent("1.1.1.1/6.81")
         .default_headers(headers)
         .http1_only(); // No HTTP/2 to match official client behavior
 
@@ -54,25 +71,49 @@ fn create_client(auth_token: Option<&str>) -> Result<Client> {
 }
 
 /// Register a new device with Cloudflare WARP.
+///
+/// Supports both consumer WARP and Cloudflare for Teams (Zero Trust) enrollment.
 pub async fn register(options: RegistrationOptions) -> Result<(WireGuardConfig, WarpCredentials)> {
     let (private_key, public_key) = generate_keypair();
     let public_key_b64 = STANDARD.encode(public_key);
-    let timestamp = Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Nanos, true);
 
-    let client = create_client(None)?;
+    let is_teams = options.teams.is_some();
+
+    // Create client with Teams JWT if provided
+    let teams_jwt = options.teams.as_ref().map(|t| t.jwt_token.as_str());
+    let client = create_client(None, teams_jwt)?;
 
     // Build registration request
-    let register_req = RegisterRequest {
-        fcm_token: String::new(),
-        install_id: String::new(),
-        key: public_key_b64,
-        locale: "en_US".to_string(),
-        model: options.device_model,
-        tos: timestamp,
-        device_type: "Android".to_string(),
+    // For Teams enrollment: no tos, no device_type, include name and serial_number
+    // For consumer WARP: include tos and device_type, no name/serial_number
+    let register_req = if let Some(ref teams) = options.teams {
+        log::info!("Registering device with Cloudflare for Teams (Zero Trust)...");
+        RegisterRequest {
+            fcm_token: String::new(),
+            install_id: String::new(),
+            key: public_key_b64,
+            locale: "en_US".to_string(),
+            model: options.device_model,
+            tos: None,
+            device_type: None,
+            name: teams.device_name.clone(),
+            serial_number: teams.serial_number.clone(),
+        }
+    } else {
+        let timestamp = Utc::now().to_rfc3339_opts(chrono::SecondsFormat::Nanos, true);
+        log::info!("Registering new device with Cloudflare WARP...");
+        RegisterRequest {
+            fcm_token: String::new(),
+            install_id: String::new(),
+            key: public_key_b64,
+            locale: "en_US".to_string(),
+            model: options.device_model,
+            tos: Some(timestamp),
+            device_type: Some("Android".to_string()),
+            name: None,
+            serial_number: None,
+        }
     };
-
-    log::info!("Registering new device with Cloudflare WARP...");
 
     let resp: RegisterResponse = client
         .post(format!("{}/{}/reg", API_URL, API_VERSION))
@@ -85,31 +126,75 @@ pub async fn register(options: RegistrationOptions) -> Result<(WireGuardConfig, 
 
     log::info!("Device registered successfully with ID: {}", resp.id);
 
+    // Parse client_id from response config if present
+    let client_id = parse_client_id(resp.config.client_id.as_deref())?;
+
     let mut credentials = WarpCredentials {
         device_id: resp.id,
         access_token: resp.token,
         private_key,
         license_key: resp.account.license,
+        client_id,
+        is_teams,
     };
 
-    // Apply license key if provided
-    if let Some(ref license) = options.license_key {
-        log::info!("Applying Warp+ license key...");
-        update_license(&credentials, license).await?;
-        credentials.license_key = license.clone();
+    // Apply license key if provided (only for consumer WARP, not Teams)
+    if !is_teams {
+        if let Some(ref license) = options.license_key {
+            log::info!("Applying Warp+ license key...");
+            update_license(&credentials, license).await?;
+            credentials.license_key = license.clone();
+        }
     }
 
-    // Fetch full configuration
-    let config = get_config(&credentials).await?;
+    // Fetch full configuration (may contain updated client_id)
+    let (config, updated_client_id) = get_config_with_client_id(&credentials).await?;
+
+    // Update client_id if we got one from the config fetch
+    if updated_client_id.is_some() {
+        credentials.client_id = updated_client_id;
+    }
 
     Ok((config, credentials))
 }
 
+/// Parse client_id from base64 string to [u8; 3].
+fn parse_client_id(client_id_b64: Option<&str>) -> Result<Option<[u8; 3]>> {
+    match client_id_b64 {
+        Some(s) if !s.is_empty() => {
+            let bytes = STANDARD
+                .decode(s)
+                .map_err(|e| Error::InvalidResponse(format!("Invalid client_id base64: {}", e)))?;
+            if bytes.len() >= 3 {
+                Ok(Some([bytes[0], bytes[1], bytes[2]]))
+            } else {
+                log::warn!(
+                    "client_id has unexpected length {}, expected at least 3 bytes",
+                    bytes.len()
+                );
+                Ok(None)
+            }
+        }
+        _ => Ok(None),
+    }
+}
+
 /// Get WireGuard configuration from existing credentials.
 pub async fn get_config(credentials: &WarpCredentials) -> Result<WireGuardConfig> {
-    let client = create_client(Some(&credentials.access_token))?;
+    let (config, _) = get_config_with_client_id(credentials).await?;
+    Ok(config)
+}
 
-    log::info!("Fetching WARP configuration for device {}...", credentials.device_id);
+/// Get WireGuard configuration from existing credentials, also returning client_id if present.
+async fn get_config_with_client_id(
+    credentials: &WarpCredentials,
+) -> Result<(WireGuardConfig, Option<[u8; 3]>)> {
+    let client = create_client(Some(&credentials.access_token), None)?;
+
+    log::info!(
+        "Fetching WARP configuration for device {}...",
+        credentials.device_id
+    );
 
     let resp: GetSourceDeviceResponse = client
         .get(format!(
@@ -150,25 +235,31 @@ pub async fn get_config(credentials: &WarpCredentials) -> Result<WireGuardConfig
     // Resolve endpoint hostname
     let peer_endpoint = resolve_endpoint(&peer.endpoint.host).await?;
 
+    // Parse client_id if present
+    let client_id = parse_client_id(resp.config.client_id.as_deref())?;
+
     log::info!(
-        "Configuration retrieved: tunnel_ip={}, endpoint={}",
+        "Configuration retrieved: tunnel_ip={}, endpoint={}, client_id={:?}",
         tunnel_ip,
-        peer_endpoint
+        peer_endpoint,
+        client_id.map(|id| format!("0x{:02x}{:02x}{:02x}", id[0], id[1], id[2]))
     );
 
-    Ok(WireGuardConfig {
+    let config = WireGuardConfig {
         private_key: credentials.private_key,
         peer_public_key,
         peer_endpoint,
         tunnel_ip,
         preshared_key: None,
         keepalive_seconds: Some(25),
-    })
+    };
+
+    Ok((config, client_id))
 }
 
 /// Update the license key on an existing registration.
 pub async fn update_license(credentials: &WarpCredentials, license_key: &str) -> Result<()> {
-    let client = create_client(Some(&credentials.access_token))?;
+    let client = create_client(Some(&credentials.access_token), None)?;
 
     let req = UpdateAccountRequest {
         license: license_key.to_string(),

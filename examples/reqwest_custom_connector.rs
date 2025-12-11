@@ -26,6 +26,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let (config, credentials) = register(RegistrationOptions {
         device_model: "reqwest-custom-connector-demo/0.1.0".to_string(),
         license_key: None, // Set to Some("xxxx-xxxx-xxxx") for Warp+
+        teams: None,       // Set to Some(TeamsEnrollment { ... }) for Zero Trust
     })
     .await?;
 

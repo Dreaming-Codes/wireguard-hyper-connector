@@ -3,6 +3,10 @@
 use serde::{Deserialize, Serialize};
 
 /// Request body for device registration.
+///
+/// This struct is used for both consumer WARP and Cloudflare for Teams enrollment.
+/// For Teams enrollment, the `serial_number` and `name` fields can be populated,
+/// and the JWT assertion is sent via a separate HTTP header.
 #[derive(Debug, Serialize)]
 pub struct RegisterRequest {
     /// FCM token (empty for non-Android clients).
@@ -16,10 +20,21 @@ pub struct RegisterRequest {
     /// Device model name.
     pub model: String,
     /// TOS acceptance timestamp (RFC3339).
-    pub tos: String,
+    ///
+    /// Note: For Teams enrollment, this field is omitted (not sent).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tos: Option<String>,
     /// Device type (e.g., "Android").
-    #[serde(rename = "type")]
-    pub device_type: String,
+    ///
+    /// Note: For Teams enrollment, this field is omitted (not sent).
+    #[serde(rename = "type", skip_serializing_if = "Option::is_none")]
+    pub device_type: Option<String>,
+    /// Device serial number (used for Teams enrollment).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub serial_number: Option<String>,
+    /// Device name (used for Teams enrollment).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
 }
 
 /// Response from device registration.
@@ -52,6 +67,13 @@ pub struct Config {
     pub interface: Interface,
     /// Peer configurations.
     pub peers: Vec<Peer>,
+    /// Client ID (base64-encoded, used for WARP reserved field).
+    ///
+    /// This is also referred to as "reserved key" as the client ID
+    /// is put in the reserved field in the WireGuard header.
+    /// Used by Cloudflare to identify the device/account.
+    #[serde(default)]
+    pub client_id: Option<String>,
 }
 
 /// Interface configuration.
