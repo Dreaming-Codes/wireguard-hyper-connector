@@ -26,6 +26,8 @@ struct InterfaceSection {
     address: String,
     #[serde(rename = "DNS")]
     dns: Option<String>,
+    #[serde(rename = "MTU")]
+    mtu: Option<u16>,
 }
 
 #[derive(Debug, Deserialize)]
@@ -50,6 +52,8 @@ pub struct WgConfigFile {
     pub address: Ipv4Addr,
     /// DNS server (optional).
     pub dns: Option<Ipv4Addr>,
+    /// MTU for the tunnel interface (optional, defaults to 460).
+    pub mtu: Option<u16>,
     /// Peer public key.
     pub peer_public_key: [u8; 32],
     /// Peer endpoint hostname or IP.
@@ -118,6 +122,7 @@ impl WgConfigFile {
             private_key,
             address,
             dns,
+            mtu: raw.interface.mtu,
             peer_public_key,
             endpoint_host,
             endpoint_port,
@@ -178,6 +183,7 @@ impl WgConfigFile {
             tunnel_ip: self.address,
             preshared_key: self.preshared_key,
             keepalive_seconds: self.persistent_keepalive.or(Some(25)), // Default to 25s if not specified
+            mtu: self.mtu,
         })
     }
 }

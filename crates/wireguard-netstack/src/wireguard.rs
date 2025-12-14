@@ -32,6 +32,8 @@ pub struct WireGuardConfig {
     pub preshared_key: Option<[u8; 32]>,
     /// Keepalive interval in seconds (0 = disabled).
     pub keepalive_seconds: Option<u16>,
+    /// MTU for the tunnel interface (defaults to 460 if None).
+    pub mtu: Option<u16>,
 }
 
 /// A WireGuard tunnel that encrypts/decrypts IP packets.
@@ -44,6 +46,8 @@ pub struct WireGuardTunnel {
     peer_endpoint: SocketAddr,
     /// Our tunnel IP address.
     tunnel_ip: Ipv4Addr,
+    /// MTU for the tunnel interface.
+    mtu: u16,
     /// Channel to send received IP packets.
     incoming_tx: mpsc::Sender<BytesMut>,
     /// Channel to receive IP packets to send.
@@ -103,6 +107,7 @@ impl WireGuardTunnel {
             udp_socket: Arc::new(udp_socket),
             peer_endpoint: config.peer_endpoint,
             tunnel_ip: config.tunnel_ip,
+            mtu: config.mtu.unwrap_or(460), // Default MTU
             incoming_tx,
             incoming_rx: Mutex::new(Some(incoming_rx)),
             outgoing_tx,
@@ -115,6 +120,11 @@ impl WireGuardTunnel {
     /// Get our tunnel IP address.
     pub fn tunnel_ip(&self) -> Ipv4Addr {
         self.tunnel_ip
+    }
+
+    /// Get the MTU for the tunnel.
+    pub fn mtu(&self) -> u16 {
+        self.mtu
     }
 
     /// Get the sender for outgoing packets.

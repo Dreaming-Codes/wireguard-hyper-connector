@@ -63,6 +63,6 @@ pub mod wireguard;
 pub use config::WgConfigFile;
 pub use dns::{DnsConfig, DohResolver, DohServerConfig};
 pub use error::{Error, Result};
-pub use netstack::{NetStack, TcpConnection};
+pub use netstack::{NetStack, TcpConnection, DEFAULT_MTU};
 pub use tunnel::ManagedTunnel;
 pub use wireguard::{WireGuardConfig, WireGuardTunnel};

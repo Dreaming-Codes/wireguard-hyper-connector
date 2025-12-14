@@ -77,5 +77,5 @@ pub use error::{Error, Result};
 // Re-export wireguard-netstack types for convenience
 pub use wireguard_netstack::{
     DnsConfig, DohResolver, DohServerConfig, ManagedTunnel, NetStack, TcpConnection, WgConfigFile,
-    WireGuardConfig, WireGuardTunnel,
+    WireGuardConfig, WireGuardTunnel, DEFAULT_MTU,
 };

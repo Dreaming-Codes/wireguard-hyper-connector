@@ -7,7 +7,7 @@ members = [
 ]
 
 [workspace.package]
-version = "0.1.0"
+version = "0.2.0"
 edition = "2021"
 license = "GPL-3.0"
 authors = ["Lorenzo Rizzotti <dev@dreaming.codes>"]
@@ -41,5 +41,5 @@ x25519-dalek = { version = "2", features = ["static_secrets"] }
 chrono = { version = "0.4", default-features = false, features = ["std", "clock"] }
 
 # Local crates
-wireguard-netstack = { version = "0.1.0", path = "crates/wireguard-netstack" }
+wireguard-netstack = { version = "0.2.0", path = "crates/wireguard-netstack" }
 warp-wireguard-gen = { version = "0.1.4", path = "crates/warp-wireguard-gen" }

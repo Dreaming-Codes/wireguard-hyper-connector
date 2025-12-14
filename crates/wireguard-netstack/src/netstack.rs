@@ -23,7 +23,7 @@ use tokio::sync::mpsc;
 /// We use a conservative MTU that results in ~600 byte UDP packets after WireGuard
 /// encapsulation (MTU + 40 IP/TCP headers + 48 WG overhead ≈ 548 byte UDP).
 /// This works around networks that filter large UDP packets.
-const MTU: usize = 460;
+pub const DEFAULT_MTU: usize = 460;
 
 /// Size of TCP socket buffers.
 const TCP_BUFFER_SIZE: usize = 65535;
@@ -34,13 +34,16 @@ struct VirtualDevice {
     rx_queue: VecDeque<BytesMut>,
     /// Packets ready to be sent (to WireGuard).
     tx_queue: VecDeque<BytesMut>,
+    /// MTU for this device.
+    mtu: usize,
 }
 
 impl VirtualDevice {
-    fn new() -> Self {
+    fn new(mtu: usize) -> Self {
         Self {
             rx_queue: VecDeque::new(),
             tx_queue: VecDeque::new(),
+            mtu,
         }
     }
 
@@ -116,7 +119,7 @@ impl Device for VirtualDevice {
     fn capabilities(&self) -> DeviceCapabilities {
         let mut caps = DeviceCapabilities::default();
         caps.medium = Medium::Ip;
-        caps.max_transmission_unit = MTU;
+        caps.max_transmission_unit = self.mtu;
         caps
     }
 }
@@ -140,10 +143,11 @@ impl NetStack {
     /// Create a new network stack backed by a WireGuard tunnel.
     pub fn new(wg_tunnel: Arc<WireGuardTunnel>) -> Arc<Self> {
         let tunnel_ip = wg_tunnel.tunnel_ip();
+        let mtu = wg_tunnel.mtu() as usize;
         let wg_tx = wg_tunnel.outgoing_sender();
 
-        // Create the virtual device
-        let mut device = VirtualDevice::new();
+        // Create the virtual device with the configured MTU
+        let mut device = VirtualDevice::new(mtu);
 
         // Create the interface configuration
         let config = Config::new(HardwareAddress::Ip);

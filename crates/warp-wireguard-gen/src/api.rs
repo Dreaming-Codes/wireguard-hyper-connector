@@ -267,6 +267,7 @@ async fn get_config_with_client_id(
         tunnel_ip,
         preshared_key: None,
         keepalive_seconds: Some(25),
+        mtu: None, // Use default MTU
     };
 
     Ok((config, client_id))
