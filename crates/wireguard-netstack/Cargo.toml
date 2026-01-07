@@ -11,7 +11,7 @@ categories = ["network-programming", "asynchronous"]
 
 [dependencies]
 # WireGuard implementation
-gotatun = "0.1"
+gotatun = "0.1.2"
 
 # Userspace TCP/IP stack
 smoltcp = { version = "0.12", default-features = false, features = [

@@ -4,7 +4,7 @@
 //! for sending/receiving encrypted WireGuard packets.
 
 use bytes::BytesMut;
-use gotatun::noise::{Tunn, TunnResult};
+use gotatun::noise::{Tunn, TunnResult, rate_limiter::RateLimiter};
 use gotatun::packet::Packet;
 use gotatun::x25519::{PublicKey, StaticSecret};
 use parking_lot::Mutex;
@@ -64,6 +64,7 @@ impl WireGuardTunnel {
         // Create the cryptographic keys
         let private_key = StaticSecret::from(config.private_key);
         let peer_public_key = PublicKey::from(config.peer_public_key);
+        let rate_limiter = Arc::new(RateLimiter::new(&peer_public_key, 100));
 
         // Create the tunnel
         let tunn = Tunn::new(
@@ -72,7 +73,7 @@ impl WireGuardTunnel {
             config.preshared_key,
             config.keepalive_seconds,
             rand::random::<u32>() >> 8, // Random index
-            None,                        // No rate limiter for client
+            rate_limiter,               // No rate limiter for client
         );
 
         // Bind UDP socket to any available port
