@@ -166,6 +166,30 @@ impl ManagedTunnel {
         self.wg_tunnel.clone()
     }
 
+    /// Returns the time elapsed since the last successful WireGuard handshake.
+    ///
+    /// Returns `Some(duration)` if a handshake has completed, or `None` if no
+    /// handshake has occurred yet. This is useful for health-checking the tunnel:
+    /// WireGuard re-handshakes every ~120s on an active session, so a value
+    /// exceeding ~180s typically indicates the tunnel is stale.
+    ///
+    /// # Example
+    ///
+    /// ```no_run
+    /// use std::time::Duration;
+    /// use wireguard_netstack::ManagedTunnel;
+    ///
+    /// fn check_health(tunnel: &ManagedTunnel) -> bool {
+    ///     match tunnel.time_since_last_handshake() {
+    ///         Some(elapsed) => elapsed < Duration::from_secs(180),
+    ///         None => false,
+    ///     }
+    /// }
+    /// ```
+    pub fn time_since_last_handshake(&self) -> Option<Duration> {
+        self.wg_tunnel.time_since_last_handshake()
+    }
+
     /// Gracefully shutdown the tunnel.
     ///
     /// This aborts all background tasks and waits for them to complete.

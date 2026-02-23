@@ -138,6 +138,17 @@ impl WireGuardTunnel {
         self.incoming_rx.lock().take()
     }
 
+    /// Returns the time elapsed since the last successful WireGuard handshake.
+    ///
+    /// Returns `Some(duration)` if a handshake has completed, or `None` if no
+    /// handshake has occurred yet. This is useful for health-checking the tunnel:
+    /// WireGuard re-handshakes every ~120s on an active session, so a value
+    /// exceeding ~180s typically indicates the tunnel is stale.
+    pub fn time_since_last_handshake(&self) -> Option<Duration> {
+        let tunn = self.tunn.lock();
+        tunn.stats().0
+    }
+
     /// Initiate the WireGuard handshake.
     pub async fn initiate_handshake(&self) -> Result<()> {
         log::info!("Initiating WireGuard handshake...");

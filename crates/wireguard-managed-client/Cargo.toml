@@ -1,0 +1,48 @@
+[package]
+name = "wireguard-managed-client"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+authors.workspace = true
+repository.workspace = true
+description = "Self-healing reqwest HTTP client that routes traffic through a WireGuard tunnel with automatic reconnection"
+keywords = ["wireguard", "reqwest", "http", "vpn", "reconnect"]
+categories = ["network-programming", "asynchronous", "web-programming::http-client"]
+
+[features]
+default = ["warp"]
+warp = ["dep:warp-wireguard-gen"]
+
+[dependencies]
+wireguard-netstack.workspace = true
+wireguard-hyper-connector.workspace = true
+reqwest-wg.workspace = true
+
+# Optional: WARP registration support
+warp-wireguard-gen = { workspace = true, features = ["serde"], optional = true }
+
+# Async runtime
+tokio.workspace = true
+
+# Logging
+log.workspace = true
+
+# Error handling
+thiserror.workspace = true
+
+# Serialization (for credential persistence)
+serde_json = "1"
+
+# Atomic client swap
+arc-swap = "1"
+
+[[example]]
+name = "reliable_warp"
+path = "../../examples/reliable_warp.rs"
+
+[[example]]
+name = "reliable_config"
+path = "../../examples/reliable_config.rs"
+
+[dev-dependencies]
+env_logger = "0.11"
