@@ -7,9 +7,14 @@
 //! # Quick start (Cloudflare WARP)
 //!
 //! ```ignore
-//! use wireguard_managed_client::ManagedWgClient;
+//! use wireguard_managed_client::{ManagedWgClient, RegistrationOptions, register_with_retry};
 //!
-//! let managed = ManagedWgClient::warp().await?;
+//! // App owns credential loading/saving — library never touches the filesystem.
+//! let creds = load_creds("warp-credentials.json")
+//!     .unwrap_or(register_with_retry(RegistrationOptions::default()).await?);
+//! save_creds("warp-credentials.json", &creds);
+//!
+//! let managed = ManagedWgClient::from_warp_credentials(creds).await?;
 //! let client = managed.client();          // reqwest::Client
 //! let resp = client.get("https://api.example.com/data").send().await?;
 //! ```
@@ -40,7 +45,7 @@ pub mod error;
 #[cfg(feature = "warp")]
 mod warp;
 
-pub use client::ManagedWgClient;
+pub use client::{ManagedWgClient, TunnelStatus};
 pub use config::ClientConfig;
 pub use error::Error;
 
@@ -51,6 +56,9 @@ pub use wireguard_hyper_connector::{
 
 #[cfg(feature = "warp")]
 pub use warp_wireguard_gen::{self, RegistrationOptions, TeamsEnrollment, WarpCredentials};
+
+#[cfg(feature = "warp")]
+pub use warp::register_with_retry;
 
 use crate::config::ConfigSource;
 
@@ -83,37 +91,11 @@ impl ManagedWgClient {
         Self::start(ConfigSource::Static(config), cfg).await
     }
 
-    /// Connect through Cloudflare WARP with default settings.
-    ///
-    /// Credentials are persisted to `warp-credentials.json` in the current
-    /// directory so that subsequent runs skip registration.
-    #[cfg(feature = "warp")]
-    pub async fn warp() -> error::Result<Self> {
-        Self::warp_with_options(RegistrationOptions::default(), ClientConfig::default()).await
-    }
-
-    /// Connect through Cloudflare WARP with full control over registration
-    /// options and client tuning.
-    ///
-    /// # Arguments
-    ///
-    /// * `options` - WARP registration options (device name, license key, Teams enrollment).
-    /// * `cfg` - Client configuration (timeouts, backoff, health thresholds).
-    #[cfg(feature = "warp")]
-    pub async fn warp_with_options(
-        options: RegistrationOptions,
-        cfg: ClientConfig,
-    ) -> error::Result<Self> {
-        let creds_path = std::path::PathBuf::from("warp-credentials.json");
-        let creds =
-            crate::warp::obtain_credentials(options, Some(&creds_path)).await?;
-        Self::start(ConfigSource::Warp(creds), cfg).await
-    }
-
     /// Connect through Cloudflare WARP using pre-existing credentials.
     ///
-    /// Skips registration entirely. Useful when you manage credential
-    /// persistence yourself.
+    /// Skips registration entirely. The caller is responsible for obtaining
+    /// credentials via [`register_with_retry`] and for persisting them across
+    /// restarts if desired.
     #[cfg(feature = "warp")]
     pub async fn from_warp_credentials(creds: WarpCredentials) -> error::Result<Self> {
         Self::from_warp_credentials_with(creds, ClientConfig::default()).await
