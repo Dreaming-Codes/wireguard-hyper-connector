@@ -16,13 +16,14 @@ serde = ["dep:serde_json"]
 
 [dependencies]
 # HTTP client - rustls with TLS 1.2 support
-reqwest = { workspace = true, features = ["json", "rustls-tls"] }
+reqwest = { workspace = true, features = ["json"] }
 rustls.workspace = true
 webpki-roots.workspace = true
 
 # Crypto
 x25519-dalek.workspace = true
 rand.workspace = true
+rand_core = { version = "0.6", features = ["getrandom"] }
 base64.workspace = true
 
 # Error handling

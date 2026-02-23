@@ -4,6 +4,7 @@
 //! for sending/receiving encrypted WireGuard packets.
 
 use bytes::BytesMut;
+use gotatun::noise::rate_limiter::RateLimiter;
 use gotatun::noise::{Tunn, TunnResult};
 use gotatun::packet::Packet;
 use gotatun::x25519::{PublicKey, StaticSecret};
@@ -72,7 +73,7 @@ impl WireGuardTunnel {
             config.preshared_key,
             config.keepalive_seconds,
             rand::random::<u32>() >> 8, // Random index
-            None,                        // No rate limiter for client
+            Arc::new(RateLimiter::new(&peer_public_key, 0)),
         );
 
         // Bind UDP socket to any available port
@@ -210,7 +211,7 @@ impl WireGuardTunnel {
                 });
 
                 // Also try to send any queued packets
-                while let Some(queued) = tunn.next_queued_packet() {
+                for queued in tunn.get_queued_packets() {
                     let pkt: Packet = queued.into();
                     let data = BytesMut::from(pkt.as_bytes());
                     let socket = self.udp_socket.clone();

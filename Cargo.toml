@@ -20,7 +20,7 @@ bytes = "1"
 log = "0.4"
 thiserror = "2"
 parking_lot = "0.12"
-rand = "0.8"
+rand = "0.10"
 base64 = "0.22"
 
 # TLS
@@ -29,10 +29,10 @@ rustls = { version = "0.23", features = ["ring"] }
 webpki-roots = "1.0"
 
 # HTTP
-reqwest = { version = "0.12", default-features = false }
+reqwest = { version = "0.13" }
 
 # reqwest with custom-hyper-connector support (will be merged upstream)
-reqwest-wg = { git = "https://github.com/Dreaming-Codes/reqwest", branch = "custom-hyper-connector", package = "reqwest", default-features = false, features = ["custom-hyper-connector", "rustls-tls"] }
+reqwest-wg = { git = "https://github.com/Dreaming-Codes/reqwest", branch = "custom-hyper-connector", package = "reqwest", default-features = false, features = ["custom-hyper-connector"] }
 
 # Crypto
 x25519-dalek = { version = "2", features = ["static_secrets"] }

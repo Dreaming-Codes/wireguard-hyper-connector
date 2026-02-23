@@ -1,13 +1,12 @@
 //! X25519 key generation for WireGuard.
 
-use rand::rngs::OsRng;
 use x25519_dalek::{PublicKey, StaticSecret};
 
 /// Generate a new X25519 keypair for WireGuard.
 ///
 /// Returns `(private_key, public_key)` as 32-byte arrays.
 pub fn generate_keypair() -> ([u8; 32], [u8; 32]) {
-    let private = StaticSecret::random_from_rng(OsRng);
+    let private = StaticSecret::random_from_rng(rand_core::OsRng);
     let public = PublicKey::from(&private);
     (private.to_bytes(), public.to_bytes())
 }
