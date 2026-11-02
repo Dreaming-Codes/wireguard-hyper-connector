@@ -4,17 +4,19 @@
 //! for sending/receiving encrypted WireGuard packets.
 
 use bytes::BytesMut;
+use gotatun::noise::index_table::IndexTable;
 use gotatun::noise::rate_limiter::RateLimiter;
 use gotatun::noise::{Tunn, TunnResult};
 use gotatun::packet::Packet;
+use gotatun::tun::MtuWatcher;
 use gotatun::x25519::{PublicKey, StaticSecret};
 use parking_lot::Mutex;
-use zerocopy::IntoBytes;
 use std::net::{Ipv4Addr, SocketAddr};
 use std::sync::Arc;
 use std::time::Duration;
 use tokio::net::UdpSocket;
 use tokio::sync::mpsc;
+use zerocopy::IntoBytes;
 
 use crate::error::{Error, Result};
 
@@ -48,7 +50,7 @@ pub struct WireGuardTunnel {
     /// Our tunnel IP address.
     tunnel_ip: Ipv4Addr,
     /// MTU for the tunnel interface.
-    mtu: u16,
+    mtu: Mutex<MtuWatcher>,
     /// Channel to send received IP packets.
     incoming_tx: mpsc::Sender<BytesMut>,
     /// Channel to receive IP packets to send.
@@ -72,7 +74,7 @@ impl WireGuardTunnel {
             peer_public_key,
             config.preshared_key,
             config.keepalive_seconds,
-            rand::random::<u32>() >> 8, // Random index
+            IndexTable::from_os_rng(),
             Arc::new(RateLimiter::new(&peer_public_key, 0)),
         );
 
@@ -92,10 +94,7 @@ impl WireGuardTunnel {
         log::info!("UDP recv buffer size: {:?}", sock_ref.recv_buffer_size());
         log::info!("UDP send buffer size: {:?}", sock_ref.send_buffer_size());
 
-        log::info!(
-            "WireGuard UDP socket bound to {}",
-            udp_socket.local_addr()?
-        );
+        log::info!("WireGuard UDP socket bound to {}", udp_socket.local_addr()?);
 
         // Create channels for packet communication
         // incoming: packets received from the tunnel (decrypted)
@@ -108,7 +107,7 @@ impl WireGuardTunnel {
             udp_socket: Arc::new(udp_socket),
             peer_endpoint: config.peer_endpoint,
             tunnel_ip: config.tunnel_ip,
-            mtu: config.mtu.unwrap_or(460), // Default MTU
+            mtu: Mutex::new(MtuWatcher::new(config.mtu.unwrap_or(460))), // Default MTU
             incoming_tx,
             incoming_rx: Mutex::new(Some(incoming_rx)),
             outgoing_tx,
@@ -125,7 +124,7 @@ impl WireGuardTunnel {
 
     /// Get the MTU for the tunnel.
     pub fn mtu(&self) -> u16 {
-        self.mtu
+        self.mtu.lock().get()
     }
 
     /// Get the sender for outgoing packets.
@@ -172,8 +171,9 @@ impl WireGuardTunnel {
     pub async fn send_ip_packet(&self, packet: BytesMut) -> Result<()> {
         let encrypted = {
             let mut tunn = self.tunn.lock();
+            let mut mtu_watcher = self.mtu.lock();
             let pkt = Packet::from_bytes(packet);
-            tunn.handle_outgoing_packet(pkt)
+            tunn.handle_outgoing_packet(pkt, Some(&mut mtu_watcher))
         };
 
         if let Some(wg_packet) = encrypted {
@@ -222,7 +222,8 @@ impl WireGuardTunnel {
                 });
 
                 // Also try to send any queued packets
-                for queued in tunn.get_queued_packets() {
+                let mut mtu_watcher = self.mtu.lock();
+                for queued in tunn.get_queued_packets(&mut mtu_watcher) {
                     let pkt: Packet = queued.into();
                     let data = BytesMut::from(pkt.as_bytes());
                     let socket = self.udp_socket.clone();
